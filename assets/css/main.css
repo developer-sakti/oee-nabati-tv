@@ -1,0 +1,51 @@
+.no-select{
+  -webkit-user-select: none;  /* Chrome all / Safari all */
+  -moz-user-select: none;     /* Firefox all */
+  -ms-user-select: none;      /* IE 10+ */
+   user-select: none;          /* Likely future */
+}
+
+input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.transparent{
+  background-color: transparent;
+}
+
+.round-right{
+  border-radius: 0px 15px 15px 0px;
+}
+
+.round-top{
+  border-radius: 15px 15px 0px 0px;
+}
+
+
+.card-rounded {
+  border: 1px solid lightblue !important;
+  border-radius: 15px !important;
+}
+.card-header{
+  border-bottom: 2px solid white
+}
+
+.grey-background{
+  background: #e5e5e5;
+}
+.round-text-field .v-input__control .v-input__slot {
+  margin: 0px;
+  border-radius: 20px !important;
+  background-color: #e5e5e5 !important;
+}
+.round-text-field .v-input__control .v-text-field__details {
+  display: none;
+}
+.select-option .v-input__control .v-text-field__details {
+  display: none;
+}
