@@ -4,13 +4,12 @@
       <v-flex md3 class="text-xs-left">
         <v-menu offset-y class="pa-0">
           <template slot="activator">
-            <span class="display-2 line-style pa-3">{{ lineActive.name }}</span>
+            <span class="display-2 line-style pa-3">{{
+              lineActive === null ? '' : lineActive.name
+            }}</span>
           </template>
           <v-list>
-            <v-list-tile
-              class="pr-0"
-              @click="lineIndex == 0 ? lineIndex++ : lineIndex--"
-            >
+            <v-list-tile class="pr-0" @click="switchLine()">
               <v-layout justify-center>
                 <span class="headline">Switch</span>
               </v-layout>
@@ -18,9 +17,9 @@
           </v-list>
         </v-menu>
       </v-flex>
-      <v-flex md6 class="text-xs-center ">
+      <v-flex md6 class="text-xs-center mt-3">
         <span class="display-2 yellow-text  font-weight-bold">
-          PO#1124 | Wafer 100 gr
+          {{ shift }}
         </span>
       </v-flex>
       <v-flex md3 class="text-xs-right mt-3">
@@ -263,7 +262,7 @@
     </v-layout>
     <v-layout row wrap class="ma-0">
       <v-flex md12 class="text-xs-center downtime py-3">
-        <span class="display-2">DOWNTIME (00:20:15)</span>
+        <span class="display-2">{{ 'DOWNTIME (' + downtime + ')' }}</span>
       </v-flex>
     </v-layout>
     <v-dialog v-model="dialog" light max-width="400" persistent>
@@ -287,6 +286,7 @@
 export default {
   data() {
     return {
+      switch: false,
       lineList: [
         {
           id: 1,
@@ -306,21 +306,23 @@ export default {
         }
       ],
       line: [],
+      shift: null,
       date: null,
       time: null,
-      target: 11500,
-      oee: '100,00%',
-      good: 1250,
-      avail: '100,00%',
-      loss: 1370,
-      perf: '100,00%',
-      mttf: '00:10:00',
-      qual: '100,00%',
-      mttr: '00:10:00',
-      mtbf: '00:10:00',
+      target: '-',
+      oee: '-',
+      good: '-',
+      avail: '-',
+      loss: '-',
+      perf: '-',
+      mttf: '-',
+      qual: '-',
+      mttr: '-',
+      mtbf: '-',
+      downtime: '-',
       dialog: false,
       lineActive: null,
-      lineIndex: 0
+      lineIndex: null
     }
   },
   computed: {
@@ -329,21 +331,13 @@ export default {
     }
   },
   watch: {
-    lineActive(value) {
-      this.lineActive = this.lineList[value]
+    lineIndex(value) {
+      this.lineActive = { ...this.lineList[value] }
+      this.getData()
     }
   },
   created() {
-    if (this.tv == 1) {
-      this.line.push(this.lineList[0])
-      this.line.push(this.lineList[1])
-    } else if (this.tv == 2) {
-      this.line.push(this.lineList[2])
-      this.line.push(this.lineList[3])
-    } else {
-      this.dialog = true
-    }
-    this.lineIndex = 0
+    this.setup()
   },
   mounted() {
     // timer
@@ -353,12 +347,42 @@ export default {
     this.setDateTime()
 
     // auto switch line every 2 minutes
-    setInterval(() => {}, 120000)
+    setInterval(() => {
+      this.switchLine()
+      this.getData()
+    }, 120000)
+    // update data every 5 seconds
+    setInterval(() => {
+      this.getData()
+    }, 5000)
   },
   methods: {
     setTV(param) {
       this.$store.dispatch('setTV', param)
       this.dialog = false
+      this.setup()
+    },
+    setup() {
+      if (this.tv == 1) {
+        this.line.push(this.lineList[0])
+        this.line.push(this.lineList[1])
+        this.lineIndex = 0
+      } else if (this.tv == 2) {
+        this.line.push(this.lineList[2])
+        this.line.push(this.lineList[3])
+        this.lineIndex = 2
+      } else {
+        this.dialog = true
+      }
+    },
+    switchLine() {
+      if (this.switch) {
+        this.lineIndex--
+        this.switch = false
+      } else {
+        this.lineIndex++
+        this.switch = true
+      }
     },
     setDateTime() {
       const date = new Date()
@@ -370,6 +394,56 @@ export default {
       const second =
         date.getSeconds() > 9 ? date.getSeconds() : '0' + date.getSeconds()
       this.time = hour + ':' + minute + ':' + second
+    },
+    getData() {
+      this.$axios
+        .get(
+          process.env.SERVICE_URL +
+            '/oee/tv?date=' +
+            this.date +
+            '&time=' +
+            this.time +
+            '&line_id=' +
+            this.lineActive.id
+        )
+        .then(res => {
+          if (res.data === '') {
+            this.shift = 'There is no active shift'
+          } else {
+            this.shift = res.data.shift.shift_name
+            this.target = res.data.total_target_produksi
+            this.oee = res.data.line_oee
+            this.good = res.data.b_finishgood_shift
+            this.avail = res.data.availablity + '%'
+            this.loss = res.data.o_total_performance_losses
+            this.perf = res.data.performance_rate + '%'
+            this.mttf = this.formatTime(res.data.mttf_z1)
+            this.qual = res.data.quality_product_rate + '%'
+            this.mttr = this.formatTime(res.data.mttr_y1)
+            this.mtbf = this.formatTime(res.data.mtbf_x1)
+            this.downtime = this.formatTime(res.data.w2_total_downtime)
+          }
+        })
+    },
+    formatTime(param) {
+      const temp = parseInt(param % 60)
+      const hour =
+        parseInt(param / 60) > 9
+          ? parseInt(param / 60)
+          : '0' + parseInt(param / 60)
+      const minute = temp > 9 ? temp : '0' + temp
+      const second = this.getValueComma(param)
+
+      return hour + ':' + minute + ':' + second
+    },
+    getValueComma(param) {
+      const stringValue = param.toString()
+      const comma = stringValue.includes('.')
+      if (comma) {
+        return parseInt((param % 1) * 60)
+      } else {
+        return '00'
+      }
     }
   }
 }
