@@ -1,19 +1,29 @@
-FROM node:lts-slim
+FROM node:lts-alpine
+
+# ARG NODE_ENV
+ARG TV_PORT
+ARG API_URL
+
+# ENV NODE_ENV=${NODE_ENV}
+ENV NODE_ENV=development
+ENV API_URL=${API_URL}
+ENV NUXT_HOST=0.0.0.0
+ENV NUXT_PORT=${TV_PORT}
+
 RUN mkdir -p /frontend
 WORKDIR /frontend
-RUN apt update \
-    && apt upgrade -y \
-    && apt install build-essential -y \
-    && apt autoremove -y \
-    && apt clean \
-    && npm i -g npm
-COPY . /frontend
-RUN npm i
-ENV NODE_ENV production
-ENV NUXT_HOST 0.0.0.0
-ENV NUXT_PORT 3000
-RUN npm run build
-RUN npm cache clear
 
-EXPOSE 3000
+RUN apk update
+RUN apk upgrade
+RUN apk add --update alpine-sdk gcc bash build-base python
+RUN npm config set python /usr/bin/python
+RUN npm i -g npm
+
+COPY package.json .
+RUN npm i --silent
+
+COPY . .
+RUN npm run build
+
+EXPOSE ${TV_PORT}
 CMD ["npm", "start"]
