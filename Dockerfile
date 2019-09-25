@@ -1,4 +1,4 @@
-FROM node:lts-alpine
+FROM node:lts-slim
 
 # ARG NODE_ENV
 ARG TV_PORT
@@ -13,14 +13,14 @@ ENV NUXT_PORT=${TV_PORT}
 RUN mkdir -p /frontend
 WORKDIR /frontend
 
-RUN apk update
-RUN apk upgrade
-RUN apk add --update alpine-sdk gcc bash build-base python
+RUN apt update
+RUN apt upgrade -y
+RUN apt install python -y
 RUN npm config set python /usr/bin/python
 RUN npm i -g npm
 
 COPY package.json .
-RUN npm i --silent
+RUN npm i
 
 COPY . .
 RUN npm run build
